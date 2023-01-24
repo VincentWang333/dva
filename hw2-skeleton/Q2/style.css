@@ -1,0 +1,48 @@
+path.link {
+    fill: none;
+    stroke: #666;
+    stroke-width: 1.5px;
+  }
+  
+  circle {
+    fill: #ccc;
+    stroke: #fff;
+    stroke: black;
+    stroke-width: 1.5px;
+  }
+  
+  text {
+    fill: #000;
+    font: 10px sans-serif;
+    pointer-events: none;
+  }
+
+  .node-label{
+    font-weight: bold;
+  }
+
+  .solid{
+    stroke: gray !important;
+    stroke-width: 3 !important;
+  }
+
+  .dashed{
+    stroke:green !important;
+    stroke-width: 1 !important;
+    stroke-dasharray: 5;
+  }
+  .degree-level-one{
+    fill:#f6eff7 !important;
+  }
+  .degree-level-two{
+    fill:#bdc9e1 !important;
+  }
+  .degree-level-three{
+    fill:#67a9cf !important;
+  }
+  .degree-level-four{
+    fill:#02818a !important;
+  }
+  .pined{
+    fill: yellow !important;
+  }

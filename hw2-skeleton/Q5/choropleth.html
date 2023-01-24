@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <!-- add title -->
+    
+    <!-- import required libraries here -->
+    
+    <style>
+        /* define CSS rules here */
+    
+    </style>
+
+    <title></title>
+</head>
+
+
+<body>
+    <!-- Add heading for the visualization -->
+    
+    <!-- Create dropdown element here. Options should be added after reading in game file, they should not be created here.-->
+    <select id="gameDropdown"></select>
+    <!-- append visualization svg to this div-->
+    <div id="choropleth"></div>
+    <script src="../lib/d3-dsv.min.js"></script>
+    <script src="../lib/d3.v5.min.js"></script>
+    <script src="../lib/d3-legend.min.js"></script>
+    <script src="../lib/d3-tip.min.js"></script>
+    <style>
+        .d3-tip {
+            line-height: 1;
+            padding: 6px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    
+        /* Creates a small triangle extender for the tooltip */
+        .d3-tip:after {
+            box-sizing: border-box;
+            display: inline;
+            font-size: 10px;
+            width: 100%;
+            line-height: 1;
+            color: rgba(0, 0, 0, 0.8);
+            content: "\25BC";
+            position: absolute;
+            text-align: center;
+        }
+    
+        /* Style northward tooltips specifically */
+        .d3-tip.n:after {
+            margin: -2px 0 0 0;
+            top: 100%;
+            left: 0;
+        }
+    </style>
+    <script>
+
+    
+        // enter code to define margin and dimensions for svg
+        var margin = { top: 20, right: 20, bottom: 20, left: 20 },
+            padding = { top: 60, right: 60, bottom: 60, left: 60 },
+            outerWidth = 960,
+            outerHeight = 500,
+            innerWidth = outerWidth - margin.left - margin.right,
+            innerHeight = outerHeight - margin.top - margin.bottom,
+            width = innerWidth - padding.left - padding.right,
+            height = innerHeight - padding.top - padding.bottom;
+        
+        // enter code to create svg
+
+        let svg = d3
+                .select("#choropleth")
+                .append("svg")
+                .attr("id", "”choropleth")
+                .attr("width", outerWidth)
+                .attr("height", outerHeight)
+                .attr("transform", "translate(" + margin.left + "," + (margin.top+20) + ")");
+        
+        
+        // enter code to create color scale
+        
+        // enter code to define tooltip
+        var tool_tip = d3.tip()
+                         .attr("class", "d3-tip")
+                         .attr("id", "tooltip")
+                         .offset([0, 0])
+                         .html(function (d) { 
+                            var countries = selected_game_data.map(x => x['Country']);
+                            var game_country_data = selected_game_data.find(x => x['Country'] == d.properties.name)
+                            if (countries.includes(d.properties.name)) {
+                                 return "Country: " + game_country_data['Country'] + "<br>" +
+                                    "Game: " + game_country_data["Game"] + "<br>" +
+                                    "Avg Rating: " + game_country_data["Average Rating"] + "<br>" +
+                                    "Number of users: " + game_country_data["Number of Users"] + "<br>"
+                             } else {
+                                 return "Country: " + d.properties.name + "<br>" +
+                                    "Game: " + selected + "<br>" +
+                                    "Avg Rating: N/A"+ "<br>" +
+                                    "Number of users: N/A"
+                             }
+                        })
+                        .style("background-color", "black");
+        svg.call(tool_tip);
+        
+        // enter code to define projection and path required for Choropleth
+        // For grading, set the name of functions for projection and path as "projection" and "path"
+        // var projection = d3.geoPath();
+        // var path = d3.geoMercator()
+        //             .scale(80)
+        //             .center([0, 20])
+        //             .translate([width / 2, height / 2]);
+        var projection = d3.geoMercator()
+                .scale(80)
+                .center([0, 20])
+                .translate([width / 2, height / 2]);
+        var path = d3.geoPath().projection(projection);
+
+
+        // define any other global variables 
+        var selected_game_data = []
+        var pathToCsv = "ratings-by-country.csv";
+        var pathToJSON = "world_countries.json";
+        Promise.all([
+            // enter code to read files
+            d3.json(pathToJSON, function(data){
+                return data;
+            }), 
+            d3.dsv(",", pathToCsv, function (d) {
+                return d;
+            })
+        ]).then(
+            // enter code to call ready() with required arguments
+            (d) => {
+                var world = d[0]
+                var gameData = d[1]
+                return ready(world, gameData)
+            }
+        );
+        
+        // this function should be called once the data from files have been read
+        // world: topojson from world_countries.json
+        // gameData: data from ratings-by-country.csv
+        var selected = ""
+        function ready(world, gameData) {
+            // enter code to extract all unique games from gameData
+            var gameNames = [...new Set(gameData.map(x => x.Game))].sort()
+            selected = gameNames[0]
+            // enter code to append the game options to the dropdown
+            var select_box = document.getElementById("gameDropdown")
+            for(var name of gameNames){
+                select_box.innerHTML += '<option value="' + name +'">' + name + '</option>'
+            }
+
+            // event listener for the dropdown. Update choropleth and legend when selection changes. Call createMapAndLegend() with required arguments.
+            select_box.addEventListener("change", ()=>{
+                selected = select_box.options[select_box.selectedIndex].text;
+                createMapAndLegend(world, gameData, selected)
+            })
+            // create Choropleth with default option. Call createMapAndLegend() with required arguments. 
+            createMapAndLegend(world, gameData, selected)
+        }
+
+        // this function should create a Choropleth and legend using the world and gameData arguments for a selectedGame
+        // also use this function to update Choropleth and legend when a different game is selected from the dropdown
+        function createMapAndLegend(world, gameData, selectedGame){ 
+            svg.select("g.countries").remove()
+            svg.select("g.legend").remove()
+            selected_game_data = gameData.filter(x=>x['Game']==selectedGame);
+            var color_domain = selected_game_data.map(x=>parseFloat(x['Average Rating']))
+            color_domain.sort(function (a, b) { return a - b });
+            var colorScale = d3.scaleQuantile()
+                                .domain(color_domain)
+                                .range(d3.schemeBlues[4]);
+            
+            svg.append("g")
+               .attr("id", "countries")
+               .attr("class", "countries")
+               .selectAll("path")
+               .data(world.features)
+               .enter()
+               .append("path")
+               .attr("d", path)
+               .attr("fill", (d) => {
+                    var countries = selected_game_data.map(x=>x['Country'])
+                    if(countries.includes(d.properties.name)){
+                        var game_country_data = selected_game_data.find(x=> x['Country']== d.properties.name)
+                        return colorScale(game_country_data['Average Rating'])
+                    } else {
+                        return 'grey'
+                    }
+               })
+               .on("mouseover", tool_tip.show)
+               .on("mouseleave", tool_tip.hide)
+
+            svg.append("g")
+               .attr("class", "legend")
+               .attr("id", "legend")
+               .attr("transform", "translate(" + width + "," + 0 + ")");
+            
+            
+            var color_labels = []
+            var color_labels_start = color_domain[0]
+            var gap = (color_domain[1] - color_domain[0]) / 4
+            for(var i=0; i<4; i++){
+                color_labels.push(color_labels_start + "-" + (color_labels_start + gap))
+                color_labels_start += gap
+            }
+
+            var legend = d3.legendColor()
+                .labels(color_labels)
+                .scale(colorScale)
+            svg.select(".legend")
+                .call(legend);
+        }
+    </script>
+
+</body>
+
+</html>
